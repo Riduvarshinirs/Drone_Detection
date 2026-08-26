@@ -1,36 +1,9 @@
-"""
-Data-access layer for rfapp - this is the file to change if/when sir's
-real schema, table name, or column names change. views.py,
-scope_plotly.py and heatmap_plotly.py do not know or care whether the
-rows underneath came from rf_detections, a different table, or (like
-before) an Excel sheet - they just consume the plain dicts this module
-hands back.
 
-Backing store: the rf_detections table in db.sqlite3 (see
-create_table.sql at the project root for the schema, and
-data/generate_dummy_data.py for how it currently gets populated with
-throwaway dummy rows).
-
-Column mapping from rf_detections -> the row dicts the rest of the app
-expects (date, time, bearing_deg, range_km, rf_value):
-    _last_update_time  -> split into 'date' (YYYY-MM-DD) and 'time' (HH:MM),
-                           which drives the From/To dropdowns exactly like
-                           the old date/time columns did
-    azimuth             -> bearing_deg (rounded to the nearest whole degree, 0-359)
-    "range"             -> range_km (assumed to already be in km)
-    ml_confidence        -> rf_value, scaled 0-1 -> 0-100 so it lines up
-                             with DETECTION_THRESHOLD below and with the
-                             color scale in scope_plotly.py
-Only rows with _is_active = 1 are read.
-"""
 from django.db import connection
 from django.db.utils import OperationalError
 
 DETECTION_THRESHOLD = 55.0
 
-# ml_confidence is stored 0.0-1.0; the rest of the app (thresholds,
-# hover text, "signal strength %") was built around a 0-100 scale, so
-# everything gets multiplied up by this once, here, at the boundary.
 CONFIDENCE_TO_RF_SCALE = 100.0
 
 _ROWS_SQL = (
@@ -106,25 +79,10 @@ def get_readings_between(from_date, to_date, from_time=None, to_time=None):
     return result
 
 
-# ---------------------------------------------------------------------------
-# Case 1: continuous bearing-sweep gradient (replaces the old "top N cones")
-# ---------------------------------------------------------------------------
-# Instead of picking out a handful of "hotspot" bearings and drawing a
-# handful of hard-edged cones, this builds one smoothed intensity/range
-# value for every bearing all the way around the circle, using every
-# single reading in the chosen date/time range. The result is rendered
-# as many thin, borderless wedges sitting flush against each other, so
-# the whole sweep reads as one continuous red-to-blue gradient instead
-# of a few separate cone shapes.
-
 GRADIENT_BUCKET_DEG = 5     # matches the raw data's bearing grid
 GRADIENT_UPSAMPLE_DEG = 1   # final render resolution (finer = smoother)
 GRADIENT_SMOOTH_RADIUS = 4  # how many neighbouring buckets blend together
 
-# Second smoothing pass, applied after upsampling, on top of the
-# bucket-level smoothing above. This is what removes the last visible
-# "kinks" at the old 5-degree bucket boundaries so the sweep reads as
-# one soft, continuous wave instead of a blended-but-still-faceted shape.
 GRADIENT_FINE_SMOOTH_RADIUS_DEG = 6    # +/- degrees blended in the fine pass
 GRADIENT_FINE_SMOOTH_SIGMA_DEG = 3.0   # how tightly weighted around center
 
@@ -211,10 +169,7 @@ def aggregate_gradient(rows, bucket_deg=GRADIENT_BUCKET_DEG,
         corner sitting exactly on top of each old bucket boundary."""
         return t * t * (3.0 - 2.0 * t)
 
-    # Upsample onto a finer angular grid using smoothstep interpolation
-    # between bucket centers, purely to render a smoother-looking
-    # gradient. Also carries forward whether each fine point sits in a
-    # stretch where both flanking buckets had zero real readings.
+
     steps_per_bucket = max(1, round(bucket_deg / upsample_deg))
     fine_rf, fine_range, fine_bearing, fine_no_data = [], [], [], []
     for i in range(num_buckets):
