@@ -44,10 +44,6 @@ def _gradient_trace(segments):
 
     thetas = [s['bearing_center'] for s in segments]
     r_vals = [s['range_km'] for s in segments]
-    # Bearings with zero real readings on both sides (see
-    # db_reader.aggregate_gradient) render as pure black instead of
-    # the cold end of the colorscale - "no signal" and "weak signal"
-    # should not look the same on the scope.
     colors = [
         '#000000' if s.get('no_data') else _intensity_to_rgb(s['intensity'])
         for s in segments
