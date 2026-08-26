@@ -1,6 +1,4 @@
-"""
-WSGI config for rfradar project.
-"""
+
 
 import os
 
