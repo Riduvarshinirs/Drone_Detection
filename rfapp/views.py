@@ -46,9 +46,7 @@ def radar_view(request):
 
     rows = db_reader.get_readings_between(from_date, to_date, from_time, to_time)
 
-    # Case 1: continuous full-sweep gradient built from every row in
-    # range (no top-N cut-off), plus a few standout bearings pulled out
-    # just for the text readout panel.
+   
     gradient_segments = db_reader.aggregate_gradient(rows)
     peaks = db_reader.find_gradient_peaks(gradient_segments, top_n=3)
 
@@ -59,7 +57,6 @@ def radar_view(request):
 
     scope_figure = scope_plotly.build_scope_figure(rows, gradient_segments, peaks)
 
-    # Case 2: density heatmap patches (unchanged).
     heatmap_cells, top_patches = db_reader.aggregate_heatmap(rows, top_n=3)
 
     for i, p in enumerate(top_patches):
