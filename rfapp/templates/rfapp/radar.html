@@ -1,0 +1,424 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RF Case - Drone Probability Console</title>
+<script src="{% static 'rfapp/plotly.min.js' %}"></script>
+<style>
+  :root{
+    --bg:#05080a;
+    --panel:#0b1014;
+    --line:#1c2a2f;
+    --grid:#16444a;
+    --text:#cfe8e6;
+    --muted:#5d7d7d;
+    --amber:#ffb238;
+    --hi:#ff3b3b;
+    --lo:#2e6fff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Consolas","SFMono-Regular",Menlo,monospace;
+    min-height:100vh;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 28px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#0c1316,#070a0c);
+  }
+  .topbar h1{
+    font-size:15px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin:0;
+    font-weight:600;
+  }
+  .topbar .sub{
+    color:var(--muted);
+    font-size:11px;
+    letter-spacing:.08em;
+  }
+  form.controls{
+    display:flex;
+    gap:18px;
+    align-items:flex-end;
+    padding:18px 28px;
+    border-bottom:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+  .field label{
+    display:block;
+    font-size:10px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .field select{
+    background:var(--panel);
+    border:1px solid var(--grid);
+    color:var(--text);
+    padding:8px 10px;
+    font-family:inherit;
+    font-size:13px;
+    min-width:150px;
+  }
+  .field button{
+    background:var(--amber);
+    color:#1a1200;
+    border:none;
+    padding:9px 18px;
+    font-family:inherit;
+    font-size:12px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .field button:hover{ filter:brightness(1.1); }
+  .field .count{
+    font-size:11px;
+    color:var(--muted);
+    padding-bottom:9px;
+  }
+
+  .layout{
+    display:flex;
+    gap:34px;
+    padding:30px 28px;
+    flex-wrap:wrap;
+    align-items:flex-start;
+  }
+  .scope-wrap{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:22px;
+    position:relative;
+  }
+  .scope-label{
+    font-size:10px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+  .legend{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    padding:22px 18px;
+    background:var(--panel);
+    border:1px solid var(--line);
+  }
+  .legend-bar{
+    width:34px;
+    height:220px;
+    background:linear-gradient(180deg, var(--hi) 0%, #ffae33 35%, #2effaa 60%, var(--lo) 100%);
+    border:1px solid var(--grid);
+  }
+  .legend-labels{
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    height:220px;
+    font-size:10px;
+    color:var(--muted);
+  }
+  .legend-cap{
+    font-size:10px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+    text-align:center;
+  }
+
+  .readout{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:22px;
+    min-width:250px;
+  }
+  .readout h2{
+    font-size:10px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 16px 0;
+  }
+  .hotspot-block{
+    border-left:3px solid var(--grid);
+    padding-left:12px;
+    margin-bottom:18px;
+  }
+  .hotspot-block .rank{
+    font-size:10px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .hotspot-block .row{
+    display:flex;
+    justify-content:space-between;
+    font-size:13px;
+    margin-bottom:3px;
+  }
+  .hotspot-block .row .k{ color:var(--muted); }
+  .hotspot-block .row .v{ color:var(--text); font-weight:700; }
+  .swatch{
+    display:inline-block;
+    width:10px;
+    height:10px;
+    border-radius:2px;
+    margin-right:6px;
+    vertical-align:middle;
+  }
+  .empty-msg{
+    color:var(--muted);
+    font-size:12px;
+    padding:40px 20px;
+    text-align:center;
+    border:1px dashed var(--line);
+  }
+  .footnote{
+    padding:0 28px 28px 28px;
+    color:var(--muted);
+    font-size:11px;
+    line-height:1.6;
+    max-width:760px;
+  }
+
+  .cases-wrapper{
+    display:flex;
+    align-items:flex-start;
+    border-top:1px solid var(--line);
+  }
+  .case-half{
+    flex:1 1 50%;
+    min-width:0;
+  }
+  .case-half + .case-half{
+    border-left:1px solid var(--line);
+  }
+  .case-heading{
+    padding:16px 28px 0 28px;
+    font-size:11px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--amber);
+  }
+  .case-heading .case-sub{
+    display:block;
+    margin-top:2px;
+    font-size:10px;
+    letter-spacing:.08em;
+    color:var(--muted);
+    text-transform:none;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1> Drone Probability Console</h1>
+  <div class="sub"> Plan Position Indicator</div>
+</div>
+
+{% if no_data %}
+  <div class="footnote">
+    <div class="empty-msg">No data found in the database.</div>
+  </div>
+{% else %}
+
+<form class="controls" method="get">
+  <div class="field">
+    <label for="from_date">From Date</label>
+    <select name="from_date" id="from_date">
+      {% for d in available_dates %}
+        <option value="{{ d }}" {% if d == selected_from %}selected{% endif %}>{{ d }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="to_date">To Date</label>
+    <select name="to_date" id="to_date">
+      {% for d in available_dates %}
+        <option value="{{ d }}" {% if d == selected_to %}selected{% endif %}>{{ d }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="from_time">From Time</label>
+    <select name="from_time" id="from_time">
+      {% for t in available_times %}
+        <option value="{{ t }}" {% if t == selected_from_time %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="to_time">To Time</label>
+    <select name="to_time" id="to_time">
+      {% for t in available_times %}
+        <option value="{{ t }}" {% if t == selected_to_time %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <button type="submit">Update Scope</button>
+  </div>
+  <div class="field count">{{ reading_count }} readings in range</div>
+</form>
+
+<div class="cases-wrapper">
+
+  <div class="case-half">
+    <div class="case-heading">
+       Plan Position Indicator
+      <span class="case-sub">Continuous RF gradient across the full 360&deg; sweep</span>
+    </div>
+
+    <div class="layout">
+
+      <div class="scope-wrap">
+        <div class="scope-label">Plan position indicator - full-sweep gradient - range rings 1 / 2 / 3 km</div>
+        <div id="scope-plot"></div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-cap">RF Detection<br>Intensity</div>
+        <div style="display:flex; gap:10px;">
+          <div class="legend-bar"></div>
+          <div class="legend-labels">
+            <span>High - drone likely</span>
+            <span>Medium</span>
+            <span>Low - drone unlikely</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="readout">
+        <h2>Strongest Points In Sweep</h2>
+        {% if peaks %}
+          {% for h in peaks %}
+            <div class="hotspot-block">
+              <div class="rank">
+                <span class="swatch" style="background:{{ h.swatch_color }}"></span>
+                {{ h.rank_label }}
+              </div>
+              <div class="row"><span class="k">Bearing</span><span class="v">{{ h.bearing_deg }}&deg;</span></div>
+              <div class="row"><span class="k">Range</span><span class="v">{{ h.range_km }} km</span></div>
+              <div class="row"><span class="k">RF value</span><span class="v">{{ h.rf_value }}</span></div>
+              <div class="row"><span class="k">Signal strength</span><span class="v">{{ h.probability_pct }}%</span></div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-msg">No readings for this date / time range.</div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  <div class="case-half">
+    <div class="case-heading">
+       Detection Density Heatmap
+      <span class="case-sub">Patches by bearing &amp; range - red where detections cluster</span>
+    </div>
+
+    <div class="layout">
+
+      <div class="scope-wrap">
+        <div class="scope-label">Density heatmap - range rings 1 / 2 / 3 km</div>
+        <div id="heatmap-plot"></div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-cap">RF Detection<br>Density</div>
+        <div style="display:flex; gap:10px;">
+          <div class="legend-bar"></div>
+          <div class="legend-labels">
+            <span>High - many detections</span>
+            <span>Medium</span>
+            <span>Low - few detections</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="readout">
+        <h2>Busiest Patches In Range</h2>
+        {% if top_patches %}
+          {% for p in top_patches %}
+            <div class="hotspot-block">
+              <div class="rank">
+                <span class="swatch" style="background:{{ p.swatch_color }}"></span>
+                {{ p.rank_label }}
+              </div>
+              <div class="row"><span class="k">Bearing (patch center)</span><span class="v">{{ p.bearing_deg }}&deg;</span></div>
+              <div class="row"><span class="k">Range</span><span class="v">{{ p.r_start }}-{{ p.r_end }} km</span></div>
+              <div class="row"><span class="k">Peak RF value</span><span class="v">{{ p.max_rf_value }}</span></div>
+              <div class="row"><span class="k">Detections</span><span class="v">{{ p.detection_count }} / {{ p.reading_count }}</span></div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-msg">No readings for this date range.</div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="footnote">
+  
+</div>
+
+{{ scope_figure|json_script:"scope-figure-data" }}
+{{ heatmap_figure|json_script:"heatmap-figure-data" }}
+<script>
+  (function () {
+    try {
+      var el = document.getElementById('scope-figure-data');
+      var fig = JSON.parse(el.textContent);
+      Plotly.newPlot('scope-plot', fig.data, fig.layout, {
+        displayModeBar: false,
+        staticPlot: false,
+        responsive: false
+      });
+    } catch (err) {
+      var target = document.getElementById('scope-plot');
+      target.innerHTML = '<div style="color:#ff3b3b;padding:20px;font-size:12px;">' +
+        'Scope failed to render: ' + (err && err.message ? err.message : err) + '</div>';
+    }
+  })();
+
+  (function () {
+    try {
+      var el = document.getElementById('heatmap-figure-data');
+      var fig = JSON.parse(el.textContent);
+      Plotly.newPlot('heatmap-plot', fig.data, fig.layout, {
+        displayModeBar: false,
+        staticPlot: false,
+        responsive: false
+      });
+    } catch (err) {
+      var target = document.getElementById('heatmap-plot');
+      target.innerHTML = '<div style="color:#ff3b3b;padding:20px;font-size:12px;">' +
+        'Heatmap failed to render: ' + (err && err.message ? err.message : err) + '</div>';
+    }
+  })();
+</script>
+
+{% endif %}
+
+</body>
+</html>

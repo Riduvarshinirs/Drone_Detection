@@ -1,0 +1,6 @@
+Django==6.0.6
+
+# openpyxl and pandas are no longer required - the app now reads
+# straight from the rf_detections table in db.sqlite3 (see
+# create_table.sql and rfapp/db_reader.py) instead of an Excel file.
+# data/generate_dummy_data.py only uses the Python standard library.
