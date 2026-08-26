@@ -1,39 +1,3 @@
-"""
-Seeds throwaway dummy rows straight into the rf_detections table in
-db.sqlite3, using sir's real schema (see create_table.sql at the
-project root).
-
-This is a standalone script - it only needs the Python standard
-library (sqlite3, random, uuid, datetime), no Django and no openpyxl,
-so it can be run directly:
-
-    cd data
-    python generate_dummy_data.py
-
-What it does, in order:
-  1. Makes sure rf_detections exists (runs create_table.sql if not).
-  2. Deletes any rows this script previously inserted (identified by
-     _last_update_remarks = 'dummy-seed'), so re-running it does not
-     pile up duplicate data.
-  3. Inserts 14 days x 6 timestamps x 72 bearings (every 5 degrees) of
-     dummy readings, with 1-3 randomly placed "hotspot" bearings per
-     timestamp so ml_confidence spikes near a moving cluster of
-     bearings instead of being random noise everywhere. This keeps
-     the same visual behaviour the old Excel-based dummy data had.
-
-Column notes / mapping used by rfapp/db_reader.py:
-  azimuth        -> bearing (0-359 degrees, compass, clockwise from N)
-  "range"        -> range in km
-  ml_confidence  -> 0.0-1.0 drone-detection confidence; the dashboard
-                    reads this as the RF "intensity" value (x100 to
-                    land back on the old 0-100 scale / 55.0 threshold)
-  _last_update_time -> drives the date/time filter dropdowns
-  _is_active     -> soft-delete flag; only 1 rows are shown
-
-Once sir's real data starts landing in this table, just stop running
-this script - rfapp/db_reader.py reads whatever is in rf_detections,
-dummy or real, without caring which put it there.
-"""
 import random
 import sqlite3
 import uuid
