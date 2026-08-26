@@ -1,15 +1,4 @@
-from .scope_plotly import intensity_to_rgb, MAX_RANGE_KM as CASE1_MAX_RANGE_KM
-
-# Each aggregated (bearing, range) cell from db_reader.aggregate_heatmap
-# is drawn as its own filled polar "patch" - a wedge-shaped ring segment
-# that exactly covers that cell's bearing/range box - instead of a
-# circular marker. Circular markers of a fixed pixel size used to
-# visually overlap whenever neighbouring cells were angularly close
-# together (especially near the center, where a few degrees of bearing
-# covers very little physical space), which made it look like duplicate
-# dots even though the data was already aggregated into one value per
-# cell. Wedge patches tile the disc exactly, so there is never any
-# overlap, and each colored region really is "one cell, one color".
+from .scope_plotly import intensity_to_rgb, MAX_RANGE_KM as CASE1_MAX_RANGE_K
 
 PATCH_ARC_STEPS = 6        # points sampled along each curved edge
 BEARING_GAP_FRAC = 0.10    # fraction of a cell's angular width left as a gap
@@ -53,10 +42,6 @@ def _patch_traces(cells):
 
         thetas, rs = _wedge_path(theta0, theta1, r0, r1)
         color = intensity_to_rgb(c['intensity'])
-
-        # Busier cells (more raw readings folded into them) render a
-        # touch more opaque/solid so "lots of detections here" reads
-        # visually stronger even when two cells share a similar color.
         density_t = (c['reading_count'] / max_readings) ** 0.5
         opacity = round(0.55 + 0.4 * density_t, 3)
 
@@ -72,20 +57,7 @@ def _patch_traces(cells):
             c['avg_rf_value'], c['max_rf_value'],
         )
 
-        # traces.append({
-        #     'type': 'scatterpolar',
-        #     'r': rs,
-        #     'theta': thetas,
-        #     'mode': 'lines',
-        #     'fill': 'toself',
-        #     'fillcolor': color,
-        #     'opacity': opacity,
-        #     'line': {'width': 0.5, 'color': color},
-        #     'hoveron': 'fills',
-        #     'hoverinfo': 'text',
-        #     'text': [hover_text] * len(thetas),
-        #     'showlegend': False,
-        # })
+       
 
     
  
